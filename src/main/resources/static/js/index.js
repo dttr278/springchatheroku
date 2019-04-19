@@ -225,14 +225,16 @@ function loadMessages(ms) {
 	}
 	let imageUrl;
 	imageUrl = userImage;
-	if (ms.avatarUrl != null && ImageExist(ms.avatarUrl))
-		imageUrl = ms.avatarUrl
-
 	var li = document.createElement('li');
 	li.setAttribute('class', direction);
 	li.setAttribute('id', 'ms-' + ms.messageId);
 	li.innerHTML = '<img src="' + imageUrl + '" alt="" />'
-		+ '<p>' + ms.content + '</p>';
+		+ '<p>' + ms.content + '</p>'
+
+	ImageExist(ms.avatarUrl, function () {
+		li.innerHTML = '<img src="' + ms.avatarUrl + '" alt="" />'
+			+ '<p>' + ms.content + '</p>'
+	});
 	return li;
 }
 function getMessages(chatId) {
@@ -275,17 +277,25 @@ function chatOnClick(chat, eventSource) {
 	}
 	$('#contactname')[0].innerText = chat.name;
 	let avatarImage;
-	avatarImage = chat.group ? groupImage : userImage;
-	$('#contact-image').attr('src', avatarImage);
-	if (chat.avatarUrl != null && ImageExist(chat.avatarUrl))
-		$('#contact-image').attr('src', chat.avatarUrl);
+	if (chat.avatarUrl == null) {
+		avatarImage = chat.group ? groupImage : userImage;
+		$('#contact-image').attr('src', avatarImage);
+	} else {
+		ImageExist(chat.avatarUrl, function () {
+			// avatarImage = chat.avatarUrl;
+			$('#contact-image').attr('src', chat.avatarUrl);
+		});
+	}
+
 	$(".messages").animate({ scrollTop: 9999 }, "fast");
 }
-function ImageExist(image_url) {
-	var http = new XMLHttpRequest();
-	http.open('HEAD', image_url, false);
-	http.send();
-	return http.status != 404;
+function ImageExist(image_url, done, fail) {
+	$.get(image_url)
+		.done(function () {
+			done();
+		}).fail(function () {
+			fail();
+		})
 }
 function loadContact(c) {
 	let status = "", message = "", name = "";
@@ -302,9 +312,6 @@ function loadContact(c) {
 	}
 	let imageUrl;
 	imageUrl = c.group ? groupImage : userImage;
-	if (c.avatarUrl != null && ImageExist(c.avatarUrl))
-		imageUrl = c.avatarUrl;
-
 	var li = document.createElement('li');
 	li.setAttribute('class', 'contact');
 	li.setAttribute('id', 'c-' + c.chatId);
@@ -318,7 +325,7 @@ function loadContact(c) {
 		+ '</div>'
 		+ '<p class="preview"> ' + message + ' </p>'
 		+ '</div>'
-		+ '</div>'
+		+ '</div>';
 	li.onclick = function () {
 		chatOnClick(c, li);
 	}
@@ -326,6 +333,20 @@ function loadContact(c) {
 		chatId: c.chatId,
 		members: c.online
 	}
+	if (c.avatarUrl != null)
+		ImageExist(c.avatarUrl, function () {
+			li.innerHTML = '<div class="wrap">'
+				+ '<span class="contact-status ' + status + '"></span>'
+				+ '<img src="' + c.avatarUrl + '" alt="" />'
+				+ '<div class="meta">'
+				+ '<div class="name">'
+				+ '<div class="contactname" style="width:70%;">' + name + '</div>'
+				+ '<div class="lasttime" style="width:30%;">' + dateFormat(new Date(c.lastTime)) + '</div>'
+				+ '</div>'
+				+ '<p class="preview"> ' + message + ' </p>'
+				+ '</div>'
+				+ '</div>';
+		});
 	return li;
 }
 
@@ -347,7 +368,11 @@ function loadProfile() {
 		user = data;
 		// console.log(username);
 		$('#profile-name').text(user.username);
-		$('#profile-img').attr('src', data.avatarurl != null && ImageExist(data.avatarurl) ? data.avatarurl : userImage);
+		$('#profile-img').attr('src', userImage);
+		ImageExist(data.avatarurl, function () {
+			$('#profile-img').attr('src', data.avatarurl);
+		});
+
 	});
 }
 $(document).ready(function () {
